@@ -101,7 +101,7 @@ class PatchPairGenerator(Sequence):
             patch.applyMeanSubtraction()
 
             ## applying color dropping
-            # patch.applyColorDropping()
+            patch.applyColorDropping()
 
             ## applying pixelation
             # patch.applyPixelation(rate=self.pixelation_rate, downsamplingSizesNum=self.downsamplingSizesNum)
@@ -113,7 +113,7 @@ class PatchPairGenerator(Sequence):
         if self.debugging:
             centerPatch.plotCenter(img)
         centerPatch.applyMeanSubtraction()
-        # centerPatch.applyColorDropping()
+        centerPatch.applyColorDropping()
         # centerPatch.applyPixelation(rate=self.pixelation_rate, downsamplingSizesNum=self.downsamplingSizesNum)
 
         return centerPatch, patchList 

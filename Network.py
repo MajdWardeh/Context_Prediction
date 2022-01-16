@@ -11,54 +11,34 @@ from PatchPairGenerator import PatchPairGenerator
 
 class Network:
 
-    def __init__(self, input_shape=(96, 96, 3), base_model='default'):
+    def __init__(self, input_shape=(96, 96, 3)):
         self.input_shape = input_shape
-        if base_model == 'default':
-            self.base_model = self._build_default_base_model()
-        elif base_model == 'batchNorm':
-            self.base_model = self._build_batchNorm_base_model()
-        else:
-            raise NotImplementedError
-    
+        self.base_model = self._build_base_model()
         self.model = self.__build()
         self.model.summary()
       
-    def _build_default_base_model(self):
+    def _build_base_model(self):
         inputLayer = layers.Input((self.input_shape[0], self.input_shape[1], 3, ), name='input') 
-        conv1 = layers.Conv2D(96, kernel_size=(11, 11), strides=1, padding='same', name='conv1', activation='relu')(inputLayer)
-        pool1 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='pool1')(conv1)
-        LRN1 = tf.nn.local_response_normalization(pool1, name='LRN1')
-        # LRN1 = pool1
-        conv2 = layers.Conv2D(384, kernel_size=(5, 5), strides=2, padding='same', name='conv2', activation='relu')(LRN1)
-        pool2 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='pool2')(conv2)
-        LRN2 = tf.nn.local_response_normalization(pool2, name='LRN2')
-        # LRN2 = pool2
-        conv3 = layers.Conv2D(384, kernel_size=(3, 3), strides=1, name='conv3', activation='relu')(LRN2)
-        conv4 = layers.Conv2D(384, kernel_size=(3, 3), strides=1, activation='relu', name='conv4')(conv3)
-        conv5 = layers.Conv2D(256, kernel_size=(3, 3), strides=1, activation='relu', name='conv5')(conv4)
-        pool5 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, name='pool5')(conv5)
+        conv1 = layers.Conv2D(96, kernel_size=(11, 11), strides=(4, 4), padding='same', activation='relu', name='conv1')(inputLayer)
+        batchNorm1 = layers.BatchNormalization(momentum=0.99, center=False, scale=False)(conv1)
+        pool1 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='pool1')(batchNorm1)
+        LRN1 = tf.nn.local_response_normalization(pool1, depth_radius=5, bias=2.0, alpha=1e-4, beta=0.75, name='LRN1')
+        conv2 = layers.Conv2D(384, kernel_size=(5, 5), strides=(1, 1), activation='relu', name='conv2')(LRN1)
+        batchNorm2 = layers.BatchNormalization(momentum=0.99, center=False, scale=False)(conv2)
+        pool2 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='pool2')(batchNorm2)
+        LRN2 = tf.nn.local_response_normalization(pool2, depth_radius=5, bias=2.0, alpha=1e-4, beta=0.75, name='LRN2')
+        conv3 = layers.Conv2D(384, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', name='conv3')(LRN2)
+        batchNorm3 = layers.BatchNormalization(momentum=0.99, center=False, scale=False)(conv3)
+        conv4 = layers.Conv2D(384, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', name='conv4')(batchNorm3)
+        batchNorm4 = layers.BatchNormalization(momentum=0.99, center=False, scale=False)(conv4)
+        conv5 = layers.Conv2D(256, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', name='conv5')(batchNorm4)
+        batchNorm5 = layers.BatchNormalization(momentum=0.99, center=False, scale=False)(conv5)
+        pool5 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, name='pool5')(batchNorm5)
         flatten = layers.Flatten()(pool5)
         fc6 = layers.Dense(4096, activation='relu', name='fc6')(flatten)
-        return Model(inputs=inputLayer, outputs=fc6, name='base_model') 
-
-    def _build_batchNorm_base_model(self):
-        inputLayer = layers.Input((self.input_shape[0], self.input_shape[1], 3, ), name='input') 
-        conv1 = layers.Conv2D(96, kernel_size=(11, 11), strides=1, padding='same', name='conv1', activation='relu')(inputLayer)
-        pool1 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='pool1')(conv1)
-        LRN1 = tf.nn.local_response_normalization(pool1, name='LRN1')
-        conv2 = layers.Conv2D(384, kernel_size=(5, 5), strides=2, padding='same', name='conv2', activation='relu')(LRN1)
-        pool2 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, padding='same', name='pool2')(conv2)
-        LRN2 = tf.nn.local_response_normalization(pool2, name='LRN2')
-        conv3 = layers.Conv2D(384, kernel_size=(3, 3), strides=1, name='conv3', activation='relu')(LRN2)
-        conv4 = layers.Conv2D(384, kernel_size=(3, 3), strides=1, activation='relu', name='conv4')(conv3)
-        conv5 = layers.Conv2D(256, kernel_size=(3, 3), strides=1, activation='relu', name='conv5')(conv4)
-        pool5 = layers.MaxPooling2D(pool_size=(3, 3), strides=2, name='pool5')(conv5)
-        # batchNorm1 = layers.BatchNormalization(momentum=0.99, center=False, scale=False)(pool5)
-        batchNorm1 = pool5
-        flatten = layers.Flatten()(batchNorm1)
-        fc6 = layers.Dense(4096, activation='relu', name='fc6')(flatten)
-        return Model(inputs=inputLayer, outputs=fc6, name='base_model') 
-    
+        model = Model(inputs=inputLayer, outputs=fc6, name='base_model') 
+        # model.summary()
+        return model
 
     def __build(self):
 
@@ -70,8 +50,7 @@ class Network:
 
       concationation_layer = layers.concatenate([output_a, output_b])
       fc7 = layers.Dense(4096, activation='relu', name='fc7')(concationation_layer)
-      batchNorm2 = layers.BatchNormalization(momentum=0.999, center=False, scale=False)(fc7)
-      fc8 = layers.Dense(4096, activation='relu', name='fc8')(batchNorm2)
+      fc8 = layers.Dense(4096, activation='relu', name='fc8')(fc7)
       fc9 = layers.Dense(8, activation='softmax', name='fc9')(fc8)
 
       return Model(inputs=[input_a, input_b], outputs=[fc9])
@@ -101,7 +80,7 @@ def createGenerators(images_dir, trainRatio=0.8):
 
 
 def main():
-    model = Network(base_model='batchNorm').getModel()
+    model = Network().getModel()
     model.compile(
                 optimizer= Adam(), 
                 loss=SparseCategoricalCrossentropy(), 
@@ -109,12 +88,10 @@ def main():
             )
     images_dir = '/media/majd/Data2/ILSVRC2012_img_val/'
     trainGen, testGen = createGenerators(images_dir)
-    # model.load_weights('./weights/first_model.h5')
     history = model.fit(x=trainGen,
                         epochs=100,
                         validation_data=testGen,
                         workers=10
-                        # use_multiprocessing=True
                         )
     model.save_weights('./weights/first_model.h5')
     
